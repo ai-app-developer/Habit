@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -17,23 +18,33 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-36.1 platforms;android-36 build-tools;36.0.0"
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 9.3.1
 
-      - name: Accept Android SDK licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-
-      # build.gradle.kts এই ফাইল খোঁজে, কিন্তু .gitignore এ থাকায় repo-তে নেই
       - name: Create debug keystore
         run: |
-          keytool -genkeypair -v -keystore debug.keystore \
+          keytool -genkeypair -keystore debug.keystore \
             -storepass android -keypass android \
             -alias androiddebugkey -keyalg RSA -keysize 2048 \
             -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        run: gradle assembleDebug --console=plain --no-configuration-cache 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+
+      - name: Show real error
+        if: failure()
+        run: grep -n -B2 -A12 "What went wrong\|^e: \|error:" build.log | head -80
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
 
       - uses: actions/upload-artifact@v4
         with:
