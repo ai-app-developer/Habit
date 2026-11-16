@@ -174,15 +174,94 @@ app/src/main/java/com/example/
 - [x] All screens & modals (`HomeScreen`, `BooksScreen`, `BookDetailScreen`, `AddChapterBottomSheet`, `ProgressScreen`, `MoreScreen`, `Dialogs`, `SyllabusBottomBar`)
 
 - [x] `compile_applet` build verification and `gradle :app:testDebugUnitTest` Robolectric test suite (Room DB, progress calculations, cascade delete, weekly trend, reminder scheduler)
+- [x] 5 Jetpack Glance Home-Screen Widgets (`Overview`, `Dark Progress`, `Today's Plan`, `Done Ring`, `Continue Studying`) with live Room data, WorkManager 30-min periodic refresh, bitmap rings/bars, preview images, and deep-link navigation
+- [x] Static periwinkle wave background (`res/drawable-nodpi/bg_home_waves.xml`) applied behind `HomeScreen` with transparent edge-to-edge status bar
 
 ### Pending
-- None (all core features and verifications complete)
+- None (all core features, widgets, background update, and verifications complete)
 
 ### Known Bugs
 - None identified.
 
 ---
 
-## 7. Resume Prompt
+## 7. Update Request (Verbatim)
+
+```text
+UPDATE REQUEST for the existing "Syllabus Tracker" Android app (Kotlin + Jetpack Compose). Do not change any existing screens, logic, database or design tokens except where stated below. First read read.md, then apply these two updates.
+
+I have attached 2 images:
+- Image 1 = Home-screen widget reference (5 widgets)
+- Image 2 = Home-screen background reference
+
+=====================================
+UPDATE 1: ANDROID HOME-SCREEN WIDGETS (exactly 5)
+=====================================
+Use Jetpack Glance (androidx.glance:glance-appwidget) + AppWidgetProvider. These are real Android launcher widgets that the user adds from the phone's home screen, NOT in-app cards. Recreate each widget to match Image 1 as closely as possible.
+
+Widget 1 – "Overview" (large, 4x2)
+- Header: book icon + "Syllabus Tracker" + small "+" button (opens Add Chapter).
+- Left: circular progress ring with "62%" and "Completed" inside.
+- Right (after a thin divider): three rows – Books count, Chapters count, Completed count, each with an icon.
+
+Widget 2 – "Dark Progress" (wide, 4x2, dark theme)
+- Header: book icon + "Syllabus Tracker".
+- Big "62%" + "Syllabus Completed" + thin horizontal progress bar.
+- Right side: rounded "Continue Studying" tile with book icon and chevron (opens the last studied book).
+- Dark solid colors (#1A1A2E background, indigo #4F46E5 progress bar). No glow.
+
+Widget 3 – "Today's Plan" (4x2 or 3x2)
+- Calendar icon + "Today's Plan" + chevron.
+- Row: circle checkbox + "Complete 2 chapters" (uses user's daily goal).
+- Thin progress bar with "0/2" (chapters completed today / daily goal).
+
+Widget 4 – "Done Ring" (small, 2x2)
+- Only a circular ring with "62%" and "Done" inside, on a light indigo tint background.
+
+Widget 5 – "Continue Studying" (wide, 4x1 or 4x2)
+- Book icon tile, subject name (e.g. "Mathematics"), "Chapter 9: Algebra", thin progress bar with percent (e.g. 50%), and a round play button on the right. Tapping opens that book's chapter list.
+
+Note: Image 1 also shows a bottom bar (Books / Progress / Add / Settings). That is NOT a widget; it is only a reference for the in-app bottom navigation. Keep the in-app bottom nav as already built.
+
+WIDGET RULES
+- All data comes live from the Room database (real percentages, counts, last studied book, next incomplete chapter, today's completed count). No hardcoded numbers.
+- Widgets auto-update whenever a chapter is added/completed/deleted (call GlanceAppWidget.updateAll) and also via periodic WorkManager refresh (every 30 minutes max, battery friendly).
+- Circular rings in widgets: draw them as a Bitmap (Canvas drawArc, rounded stroke caps) and show via Glance Image, since Glance has no native arc.
+- Widgets have rounded corners (24dp), solid colors only: light widgets use white/#F6F7FB with indigo #4F46E5 progress and #EEF0FF track; dark widget uses #1A1A2E. No glow, no neon, no gradients inside widgets, no shadows beyond system default.
+- Provide a widget preview image and a short description for each widget (shown in the Android widget picker). Name them exactly: "Overview", "Dark Progress", "Today's Plan", "Done Ring", "Continue Studying".
+- Support Android 14 (API 34), resizable widgets, and show a simple empty state ("Add a book to start") when there is no data.
+- Tapping a widget opens the relevant screen of the app via PendingIntent / actionStartActivity.
+
+=====================================
+UPDATE 2: HOME SCREEN BACKGROUND
+=====================================
+Apply the design from Image 2 as the background of the in-app Home screen only.
+- Very light lavender/periwinkle base (#EEF0FF to #F6F7FB) with soft, smooth, large wave-like curved shapes in light indigo/blue tints (up to #C7CCFB, small area near the right edge a bit stronger blue #8FA0FF as in the image).
+- Add the image as a drawable resource (res/drawable-nodpi) and show it with ContentScale.Crop behind the content, OR recreate it with Compose Canvas using smooth Bézier paths. Prefer the drawable for exact match.
+- Static background only: no animation, no parallax, no glow effects.
+- All Home cards stay solid white with 1dp hairline border so the text remains clearly readable over the background.
+- Status bar transparent (edge-to-edge) so the background shows behind it.
+- Other screens (Books, Add Chapter, Progress, More) keep the plain #F6F7FB background.
+```
+
+---
+
+## 8. Home-Screen Widgets & Background Details
+
+### Home-Screen Widgets (`com.example.widgets`)
+1. **Overview** (`4x2`, `widget_overview_info.xml`, `OverviewWidget` / `OverviewWidgetReceiver`): Header with book icon, `"Syllabus Tracker"`, and `+` button opening Add Chapter; left circular bitmap progress ring (`#4F46E5` arc, `#EEF0FF` track); vertical divider; right 3-row counts (`Books`, `Chapters`, `Completed`).
+2. **Dark Progress** (`4x2`, `widget_dark_progress_info.xml`, `DarkProgressWidget` / `DarkProgressWidgetReceiver`): Solid `#1A1A2E` rounded card with white header, overall `%`, `"Syllabus Completed"`, indigo `#4F46E5` horizontal bar, and `#262842` `"Continue Studying"` tile opening the active book.
+3. **Today's Plan** (`3x2`, `widget_todays_plan_info.xml`, `TodaysPlanWidget` / `TodaysPlanWidgetReceiver`): Calendar icon, `"Today's Plan"`, chevron, circle checkbox with `"Complete X chapters"` daily goal, and progress bar with `completedToday/dailyGoal`.
+4. **Done Ring** (`2x2`, `widget_done_ring_info.xml`, `DoneRingWidget` / `DoneRingWidgetReceiver`): Solid `#EEF0FF` background with centered circular bitmap progress ring displaying overall `%` and `"Done"`.
+5. **Continue Studying** (`4x1`, `widget_continue_studying_info.xml`, `ContinueStudyingWidget` / `ContinueStudyingWidgetReceiver`): Book tile, active book name, next incomplete chapter, progress bar + `%`, and circular play button opening that book's chapter list.
+
+- **Auto-Refresh**: `WidgetUpdater.updateAllWidgets()` invokes `GlanceAppWidget.updateAll` immediately after repository DB/goal mutations, and `WidgetRefreshWorker` runs periodically every 30 minutes via WorkManager (`ExistingPeriodicWorkPolicy.KEEP`).
+
+### Home Screen Background
+- `res/drawable-nodpi/bg_home_waves.xml` rendered with `Image(..., contentScale = ContentScale.Crop)` behind `HomeScreen` content and extending behind the transparent edge-to-edge status bar (`SystemBarStyle.light(TRANSPARENT, TRANSPARENT)`). Other screens keep `#F6F7FB`.
+
+---
+
+## 9. Resume Prompt
 
 Read this file fully and continue building this exact app from the pending items without changing the design.

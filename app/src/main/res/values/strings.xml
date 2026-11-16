@@ -34,4 +34,14 @@
     <string name="more_title">More</string>
     <string name="notification_channel_name">Daily Study Reminders</string>
     <string name="notification_channel_desc">Reminds you daily about remaining chapters to reach your study goal.</string>
+    <string name="widget_overview_name">Overview</string>
+    <string name="widget_overview_desc">Shows overall syllabus completion ring and total books, chapters, and completed count.</string>
+    <string name="widget_dark_progress_name">Dark Progress</string>
+    <string name="widget_dark_progress_desc">Dark progress card with syllabus percentage and quick Continue Studying shortcut.</string>
+    <string name="widget_todays_plan_name">Today\'s Plan</string>
+    <string name="widget_todays_plan_desc">Tracks today\'s completed chapters against your daily study goal.</string>
+    <string name="widget_done_ring_name">Done Ring</string>
+    <string name="widget_done_ring_desc">Compact circular ring displaying overall syllabus completion percentage.</string>
+    <string name="widget_continue_studying_name">Continue Studying</string>
+    <string name="widget_continue_studying_desc">Displays your active book, next incomplete chapter, and progress.</string>
 </resources>

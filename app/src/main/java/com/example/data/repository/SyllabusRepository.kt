@@ -60,6 +60,7 @@ data class SyllabusSnapshot(
 class SyllabusRepository(
   private val dao: SyllabusDao,
   private val prefsRepo: UserPreferencesRepository,
+  private val onDataChanged: suspend () -> Unit = {},
 ) {
   val snapshot: Flow<SyllabusSnapshot> =
     combine(dao.observeBooks(), dao.observeAllChapters(), prefsRepo.userPreferences) {
@@ -127,12 +128,20 @@ class SyllabusRepository(
 
   fun observeChaptersForBook(bookId: Long): Flow<List<ChapterEntity>> = dao.observeChaptersForBook(bookId)
 
-  suspend fun addBook(name: String): Long = dao.insertBook(BookEntity(name = name.trim()))
+  suspend fun addBook(name: String): Long {
+    val id = dao.insertBook(BookEntity(name = name.trim()))
+    onDataChanged()
+    return id
+  }
 
-  suspend fun updateBook(book: BookEntity) = dao.updateBook(book.copy(name = book.name.trim()))
+  suspend fun updateBook(book: BookEntity) {
+    dao.updateBook(book.copy(name = book.name.trim()))
+    onDataChanged()
+  }
 
   suspend fun deleteBook(bookId: Long) {
     dao.deleteBookById(bookId)
+    onDataChanged()
   }
 
   suspend fun addChapter(
@@ -143,15 +152,18 @@ class SyllabusRepository(
   ): Long {
     val completedAt = if (isCompleted) System.currentTimeMillis() else null
     prefsRepo.setLastOpenedBookId(bookId)
-    return dao.insertChapter(
-      ChapterEntity(
-        bookId = bookId,
-        name = name.trim(),
-        number = number,
-        isCompleted = isCompleted,
-        completedAt = completedAt,
+    val id =
+      dao.insertChapter(
+        ChapterEntity(
+          bookId = bookId,
+          name = name.trim(),
+          number = number,
+          isCompleted = isCompleted,
+          completedAt = completedAt,
+        )
       )
-    )
+    onDataChanged()
+    return id
   }
 
   suspend fun updateChapter(chapter: ChapterEntity, isCompleted: Boolean) {
@@ -162,6 +174,7 @@ class SyllabusRepository(
         else -> null
       }
     dao.updateChapter(chapter.copy(name = chapter.name.trim(), isCompleted = isCompleted, completedAt = newCompletedAt))
+    onDataChanged()
   }
 
   suspend fun toggleChapterCompleted(chapter: ChapterEntity) {
@@ -169,18 +182,22 @@ class SyllabusRepository(
     val completedAt = if (nextState) System.currentTimeMillis() else null
     dao.updateChapterCompletion(chapter.id, nextState, completedAt)
     prefsRepo.setLastOpenedBookId(chapter.bookId)
+    onDataChanged()
   }
 
   suspend fun deleteChapter(chapterId: Long) {
     dao.deleteChapterById(chapterId)
+    onDataChanged()
   }
 
   suspend fun markBookOpened(bookId: Long) {
     prefsRepo.setLastOpenedBookId(bookId)
+    onDataChanged()
   }
 
   suspend fun setDailyGoal(goal: Int) {
     prefsRepo.setDailyGoal(goal)
+    onDataChanged()
   }
 
   suspend fun setReminderEnabled(enabled: Boolean) {

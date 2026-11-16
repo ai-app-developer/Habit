@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,7 +50,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -91,14 +94,21 @@ fun HomeScreen(
   val showBellDot = snapshot.preferences.reminderEnabled && remainingToday > 0
 
   Box(
-    modifier = Modifier.fillMaxSize().background(AppBackground).padding(innerPadding),
+    modifier = Modifier.fillMaxSize().background(AppBackground),
     contentAlignment = Alignment.TopCenter,
   ) {
+    Image(
+      painter = painterResource(id = R.drawable.bg_home_waves),
+      contentDescription = null,
+      contentScale = ContentScale.Crop,
+      modifier = Modifier.fillMaxSize(),
+    )
     Column(
       modifier =
         Modifier.widthIn(max = 600.dp)
           .fillMaxWidth()
           .verticalScroll(rememberScrollState())
+          .padding(innerPadding)
           .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
       Row(

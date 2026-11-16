@@ -120,4 +120,43 @@ class ExampleRobolectricTest {
       ) == expected
     )
   }
+
+  @Test
+  fun `widget bitmap helper draws valid progress ring and horizontal bar`() {
+    val ring =
+      com.example.widgets.WidgetBitmapHelper.drawProgressRingBitmap(
+        sizePx = 180,
+        strokePx = 18f,
+        fraction = 0.62f,
+        trackColor = 0xFFEEF0FF.toInt(),
+        arcColor = 0xFF4F46E5.toInt(),
+      )
+    assertEquals(180, ring.width)
+    assertEquals(180, ring.height)
+
+    val bar =
+      com.example.widgets.WidgetBitmapHelper.drawHorizontalBarBitmap(
+        widthPx = 240,
+        heightPx = 14,
+        fraction = 0.5f,
+        trackColor = 0xFFEEF0FF.toInt(),
+        fillColor = 0xFF4F46E5.toInt(),
+      )
+    assertEquals(240, bar.width)
+    assertEquals(14, bar.height)
+  }
+
+  @Test
+  fun `repository invokes onDataChanged callback after book or chapter mutations`() = runTest {
+    var callbackCount = 0
+    val repoWithCallback =
+      SyllabusRepository(
+        dao = db.syllabusDao(),
+        prefsRepo = UserPreferencesRepository(context),
+        onDataChanged = { callbackCount++ },
+      )
+    val bookId = repoWithCallback.addBook("Physics")
+    repoWithCallback.addChapter(bookId, "Kinematics", 1, isCompleted = false)
+    assertEquals(2, callbackCount)
+  }
 }

@@ -1,9 +1,12 @@
 package com.example
 
 import android.Manifest
+import android.content.Intent
+import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,7 +21,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -49,27 +55,69 @@ import com.example.ui.screens.ProgressScreen
 import com.example.ui.theme.AppBackground
 import com.example.ui.theme.SyllabusTrackerTheme
 import com.example.ui.viewmodel.SyllabusViewModel
+import com.example.widgets.WidgetIntents
+
+data class PendingWidgetNav(
+  val id: Long,
+  val action: String,
+  val bookId: Long? = null,
+)
 
 class MainActivity : ComponentActivity() {
+  private var pendingWidgetNav by mutableStateOf<PendingWidgetNav?>(null)
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
+    enableEdgeToEdge(
+      statusBarStyle = SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT),
+    )
+    handleIntent(intent)
     setContent {
       SyllabusTrackerTheme {
-        SyllabusApp()
+        SyllabusApp(
+          pendingWidgetNav = pendingWidgetNav,
+          onConsumeWidgetNav = { pendingWidgetNav = null },
+        )
       }
     }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    handleIntent(intent)
+  }
+
+  private fun handleIntent(intent: Intent?) {
+    val action = intent?.getStringExtra(WidgetIntents.EXTRA_WIDGET_ACTION) ?: return
+    val bookId =
+      if (intent.hasExtra(WidgetIntents.EXTRA_BOOK_ID)) {
+        intent.getLongExtra(WidgetIntents.EXTRA_BOOK_ID, -1L).takeIf { it > 0L }
+      } else {
+        null
+      }
+    pendingWidgetNav =
+      PendingWidgetNav(
+        id = System.nanoTime(),
+        action = action,
+        bookId = bookId,
+      )
+    intent.removeExtra(WidgetIntents.EXTRA_WIDGET_ACTION)
   }
 }
 
 @Composable
-fun SyllabusApp(viewModel: SyllabusViewModel = viewModel()) {
+fun SyllabusApp(
+  pendingWidgetNav: PendingWidgetNav? = null,
+  onConsumeWidgetNav: () -> Unit = {},
+  viewModel: SyllabusViewModel = viewModel(),
+) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val navController = rememberNavController()
   val backStackEntry by navController.currentBackStackEntryAsState()
   val currentDestination = backStackEntry?.destination
 
-  val context = androidx.compose.ui.platform.LocalContext.current
+  val context = LocalContext.current
   val notificationPermissionLauncher =
     rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { /* handled */ }
 
@@ -101,6 +149,36 @@ fun SyllabusApp(viewModel: SyllabusViewModel = viewModel()) {
       launchSingleTop = true
       restoreState = true
     }
+  }
+
+  LaunchedEffect(pendingWidgetNav?.id) {
+    val nav = pendingWidgetNav ?: return@LaunchedEffect
+    when (nav.action) {
+      WidgetIntents.ACTION_OPEN_ADD_CHAPTER -> {
+        navigateToTab(HomeRoute)
+        viewModel.openAddChapterSheet()
+      }
+      WidgetIntents.ACTION_OPEN_BOOK -> {
+        if (nav.bookId != null) {
+          navController.navigate(BookDetailRoute(nav.bookId)) {
+            launchSingleTop = true
+          }
+        } else {
+          navigateToTab(BooksRoute)
+        }
+      }
+      WidgetIntents.ACTION_OPEN_PROGRESS -> {
+        navigateToTab(ProgressRoute)
+      }
+      WidgetIntents.ACTION_OPEN_TODAYS_PLAN -> {
+        navigateToTab(HomeRoute)
+        viewModel.openDailyGoalDialog()
+      }
+      WidgetIntents.ACTION_OPEN_HOME -> {
+        navigateToTab(HomeRoute)
+      }
+    }
+    onConsumeWidgetNav()
   }
 
   Scaffold(
